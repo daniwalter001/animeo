@@ -247,8 +247,8 @@ app
     });
 
     result = [
-      ...(matches.length > 10 ? matches.slice(0, 10) : matches),
-      ...(batchResult.length > 10 ? batchResult.slice(0, 10) : batchResult),
+      ...(matches.length > 20 ? matches.slice(0, 20) : matches),
+      ...(batchResult.length > 20 ? batchResult.slice(0, 20) : batchResult),
       ...result,
     ];
 

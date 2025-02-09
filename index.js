@@ -251,6 +251,7 @@ app
       ...(batchResult.length > 20 ? batchResult.slice(0, 20) : batchResult),
       ...result,
     ];
+    result = removeDuplicate(result, "Title");
 
     console.log({ "Retenus for filtering": result.length });
 

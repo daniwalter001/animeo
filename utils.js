@@ -1383,7 +1383,9 @@ let cleanName = (name = "") => {
 };
 
 let simplifiedName = (name = "") => {
-  name = name.includes("-") ? name.split("-")[0] : name;
+  let splitName = name.includes("-") ? name.split("-")[0] : name;
+  splitName = splitName.trim();
+  name = splitName.split(" ").length > 1 ? splitName : name;
   // name = name.includes(":") ? name.split(":")[0] : name;
   name = name.trim();
   return cleanName(name);

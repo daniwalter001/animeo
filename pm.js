@@ -1,6 +1,6 @@
 const fetch = require("node-fetch");
 class PM {
-  static PM_KEYS = ["9rg4e6tpe2zp23d5", "mmsfyc59gwtis3g8", "tia5hhs9pddz6m7c"];
+  static PM_KEYS = ["9rg4e6tpe2zp23d5", "mmsfyc59gwtis3g8"];
   static apikey =
     this.getKeys()[Math.floor(Math.random() * this.getKeys().length)];
 

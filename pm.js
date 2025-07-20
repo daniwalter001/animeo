@@ -1,6 +1,6 @@
 const fetch = require("node-fetch");
 class PM {
-  static PM_KEYS = ["9rg4e6tpe2zp23d5", "mmsfyc59gwtis3g8"];
+  static PM_KEYS = ["mmsfyc59gwtis3g8"];
   static apikey =
     this.getKeys()[Math.floor(Math.random() * this.getKeys().length)];
 
@@ -28,20 +28,25 @@ class PM {
   static checkCached = async (hash = "") => {
     if (!hash) return false;
     let url = `https://www.premiumize.me/api/cache/check?apikey=${this.apikey}&items[]=${hash}`;
+
+    //console.log({url});
     try {
       let res = await fetch(url);
 
       // console.log({ status: res.status, statusText: res.statusText });
       let resJson = (await res.json()) ?? {};
 
-      // console.log({ resJson });
+      //console.log({ resJson });
+
+
+      console.log('========================================================================');
 
       if (this.checkPremiumizeRes(resJson)) {
         if (
           "response" in resJson &&
           resJson["response"][0] &&
-          "transcoded" in resJson &&
-          resJson["transcoded"][0]
+          "filename" in resJson &&
+          resJson["filename"][0]
         )
           return resJson["filename"][0];
       }

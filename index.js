@@ -5,8 +5,6 @@ const { removeDuplicate, REGEX, getRanges } = require("./helper");
 const UTILS = require("./utils");
 const redisClient = require("./redis");
 const config = require("./config");
-const ptf = require("parse-torrent-filename");
-const ptt = require("parse-torrent-title");
 
 const redis = redisClient();
 
@@ -261,9 +259,7 @@ app
     // ----------------------------------------------------------------------------
 
     result = (result ?? []).filter(
-      (torrent) =>
-        (torrent["MagnetUri"] != "" || torrent["Link"] != "") &&
-        torrent["Peers"] >= 0
+      (torrent) => torrent["MagnetUri"] != "" && torrent["Peers"] >= 0
     );
 
     console.log({ "Result after removing low peers items": result.length });
@@ -271,10 +267,7 @@ app
     torrentParsed = await UTILS.queue(
       result.map(
         (torrent) => () =>
-          UTILS.getParsedFromMagnetorTorrentFile(
-            torrent,
-            torrent["Link"] || torrent["MagnetUri"]
-          )
+          UTILS.getParsedFromMagnetorTorrentFile(torrent, torrent["MagnetUri"])
       ),
       5
     );
@@ -282,13 +275,6 @@ app
       (torrent) =>
         torrent && torrent?.parsedTor && torrent?.parsedTor?.files?.length > 0
     );
-
-    // console.log(
-    //   torrentParsed.map(
-    //     (torrent) =>
-    //       `${torrent.parsedTor.files.length} files from ${torrent["Title"]}`
-    //   )
-    // );
 
     console.log({ "Parsed torrents": torrentParsed.length });
 

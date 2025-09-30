@@ -1,7 +1,7 @@
 const fetch = require("node-fetch");
 
 class RealDebrid {
-  static rdapikeys = ["AW3E6A4MXO5GIHEYUJU7ROJX2PDVOBDPF7HSOSEKM5OIDXMMEC4Q"];
+  static rdapikeys = ["YNUUNSIYFUJ5DB5MCHFPM7TTSFRMEDZSFHFSLEV6L76PYYJ6JQAA"];
   static rdapikey =
     this.rdapikeys[Math.floor(Math.random() * this.rdapikeys.length)];
 

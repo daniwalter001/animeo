@@ -712,7 +712,6 @@ const toPMStream = async (
           let infoHash = tor.parsedTor.infoHash.toLowerCase();
 
           let isCached = await PM.checkCached(infoHash);
-          console.log({ isCached });
 
           if (isCached) {
             let cache = await PM.getDirectDl(infoHash);

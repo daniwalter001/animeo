@@ -1401,47 +1401,6 @@ let simplifiedName = (name = "") => {
   return cleanName(name);
 };
 
-function parseEpisodeInfo(filename = "") {
-  const pattern =
-    /[Ss]?(\d{1,2})[ExXeE](\d{1,2})|(\d{1,2})[xX](\d{1,2})|(?:^|[. -])(?:E)?(\d{1,4})(?:[. -]|$)|Episode[. -](\d{1,4})|EP?[. -]?(\d{1,4})/i;
-
-  const match = filename.match(pattern);
-
-  if (!match) {
-    return { season: null, episode: null, isAbsolute: false };
-  }
-
-  // Season x Episode format (S01E02 or 1x02)
-  if (match[1] && match[2]) {
-    return {
-      season: parseInt(match[1]),
-      episode: parseInt(match[2]),
-      isAbsolute: false,
-    };
-  }
-
-  // Alternative Season x Episode format (1x02)
-  if (match[3] && match[4]) {
-    return {
-      season: parseInt(match[3]),
-      episode: parseInt(match[4]),
-      isAbsolute: false,
-    };
-  }
-
-  // Episode only formats (0010 or E0010 or 10 or Episode 10 or EP10)
-  const episodeNumber = match[5] || match[6] || match[7];
-  if (episodeNumber) {
-    return {
-      season: 1,
-      episode: parseInt(episodeNumber),
-      isAbsolute: true,
-    };
-  }
-
-  return { season: null, episode: null, isAbsolute: false };
-}
-
 module.exports = {
   containEandS,
   containE_S,
@@ -1469,6 +1428,5 @@ module.exports = {
   fetchNyaaRssTorrent,
   fetchNyaa,
   fetchNyaaRssTorrent2,
-  parseEpisodeInfo,
   queue,
 };

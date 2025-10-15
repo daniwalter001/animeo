@@ -429,11 +429,9 @@ const getParsedFromMagnetorTorrentFile = (tor, uri) => {
         });
 
         childProcess.on("close", (code) => {
-          console.log(`Child process exited with code ${code}`);
           resolve(null);
         });
       } else {
-        console.log("why");
         resolve(null);
       }
     } catch (error) {

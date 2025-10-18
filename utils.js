@@ -1386,6 +1386,7 @@ const getFlagFromName = (file_name) => {
 
 let cleanName = (name = "") => {
   return name
+    .replaceAll("-", " ")
     .replace(/[^a-zA-Z0-9 ]/g, "")
     .replace(/\s{2,}/g, " ")
     .replace(/['<>:]/g, "");

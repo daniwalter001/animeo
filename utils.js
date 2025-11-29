@@ -6,10 +6,9 @@ var torrentStream = require("torrent-stream");
 const { PM } = require("./pm");
 const AllDebrid = require("./ad");
 const DebridLink = require("./dl");
-const { XMLParser, XMLBuilder, XMLValidator } = require("fast-xml-parser");
+const { XMLParser } = require("fast-xml-parser");
 const RealDebrid = require("./rd");
-const TorrentParser = require("./torrent");
-const torrentParser = new TorrentParser();
+const { fork } = require("child_process");
 
 let nbreAdded = 0;
 let cookie = "";
@@ -414,18 +413,29 @@ let isRedirect = async (url) => {
   }
 };
 
-const getParsedFromMagnetorTorrentFile = async (tor, uri) => {
+const getParsedFromMagnetorTorrentFile = (tor, uri) => {
   return new Promise(async (resolve, reject) => {
-    //follow redirection cause some http url sent magnet url
-    let realUrl = uri;
+    try {
+      let realUrl = uri;
 
-    if (realUrl) {
-      let parsedTorrent = null;
+      if (realUrl) {
+        const childProcess = fork("./lib/childParser.js");
 
-      parsedTorrent = await torrentParser.parse(realUrl);
+        childProcess.send({ url: realUrl, Cookie: tor.Cookie ?? "" });
 
-      resolve({ parsedTor: parsedTorrent, ...tor });
-    } else {
+        childProcess.on("message", (parsedData) => {
+          resolve({ parsedTor: parsedData, ...tor });
+          childProcess.kill();
+        });
+
+        childProcess.on("close", (code) => {
+          resolve(null);
+        });
+      } else {
+        resolve(null);
+      }
+    } catch (error) {
+      console.log(error);
       resolve(null);
     }
   });
@@ -700,7 +710,6 @@ const toPMStream = async (
           let infoHash = tor.parsedTor.infoHash.toLowerCase();
 
           let isCached = await PM.checkCached(infoHash);
-          console.log({ isCached });
 
           if (isCached) {
             let cache = await PM.getDirectDl(infoHash);
@@ -1377,6 +1386,7 @@ const getFlagFromName = (file_name) => {
 
 let cleanName = (name = "") => {
   return name
+    .replaceAll("-", " ")
     .replace(/[^a-zA-Z0-9 ]/g, "")
     .replace(/\s{2,}/g, " ")
     .replace(/['<>:]/g, "");

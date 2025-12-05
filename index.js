@@ -1,10 +1,18 @@
 require("dotenv").config();
 const express = require("express");
 const app = express();
-const { removeDuplicate, REGEX, getRanges } = require("./helper");
+const {
+  removeDuplicate,
+  REGEX,
+  getRanges,
+  getAvatarName,
+  isLatinValid,
+  cleanKitsuName,
+} = require("./helper");
 const UTILS = require("./utils");
 const redisClient = require("./redis");
 const config = require("./config");
+const { search } = require("./search_handler");
 
 const redis = redisClient();
 
@@ -18,10 +26,7 @@ app
     res.setHeader("Access-Control-Allow-Headers", "*");
     res.setHeader("Content-Type", "application/json");
 
-    //
-    var json = { ...config };
-
-    return res.send(json);
+    return res.send({ ...config });
   })
   .get("/stream/:type/:id", async (req, res) => {
     res.setHeader("Access-Control-Allow-Origin", "*");
@@ -71,7 +76,7 @@ app
       tmp = id.split(":");
     }
 
-    let [tt, s, e, abs_season, abs_episode, abs] = tmp;
+    let [tt, s, e, abs_season, abs_episode, abs, aliases] = tmp;
 
     console.log(tmp);
 
@@ -80,85 +85,48 @@ app
     console.log({ meta: id });
     console.log({ name: meta?.name, year: meta?.year });
 
+    aliases = (aliases || []).map((e) => cleanKitsuName(e));
+    const avatarName = getAvatarName(meta?.name);
+
+    aliases = aliases.filter(
+      (e) => isLatinValid(e) && e != meta.name && e != avatarName
+    );
+    let altName = aliases && aliases.length > 0 ? aliases[0] : null;
+
+    console.log({ altName });
+
     let query = "";
     query = meta?.name ?? "";
 
-    let result = [];
-    let batchResult = [];
-
     // query = query.replace(/['<>:]/g, "");
 
-    if (media == "movie") {
-      query += " " + meta?.year;
-      result = await UTILS.fetchNyaa(
-        encodeURIComponent(UTILS.simplifiedName(query)),
-        "movie"
-      );
-    } else if (media == "series") {
-      let batchPromises = [];
-      let promises = [
-        () =>
-          UTILS.fetchNyaa(
-            encodeURIComponent(
-              `${UTILS.simplifiedName(query)} S${s?.padStart(
-                2,
-                "0"
-              )}E${e?.padStart(2, "0")}`
-            )
-          ),
-      ];
+    let { batchResult, result } = await search({
+      fn: UTILS.fetchNyaa,
+      query,
+      media,
+      s,
+      e,
+      abs,
+      abs_season,
+      abs_episode,
+      meta,
+    });
 
-      batchPromises = [
-        ...batchPromises,
-        () =>
-          UTILS.fetchNyaa(
-            encodeURIComponent(`${UTILS.simplifiedName(query)}`),
-            "series",
-            s
-          ),
-      ];
+    if (altName && altName.length > 0) {
+      let { batchResult: altBatchResult, result: altResult } = await search({
+        fn: UTILS.fetchNyaa,
+        query: altName,
+        media,
+        s,
+        e,
+        abs,
+        abs_season,
+        abs_episode,
+        meta,
+      });
 
-      if (abs) {
-        promises = [
-          ...promises,
-          () =>
-            UTILS.fetchNyaa(
-              encodeURIComponent(
-                `${UTILS.simplifiedName(query)} ${abs_episode?.padStart(
-                  3,
-                  "0"
-                )}`
-              )
-            ),
-        ];
-
-        batchPromises = [
-          ...batchPromises,
-          () =>
-            UTILS.fetchNyaa(
-              encodeURIComponent(`${UTILS.simplifiedName(query)} complete`)
-            ),
-          () =>
-            UTILS.fetchNyaa(
-              encodeURIComponent(`${UTILS.simplifiedName(query)} batch`)
-            ),
-        ];
-      } else {
-        if (+s == 1) {
-          promises = [
-            ...promises,
-            () =>
-              UTILS.fetchNyaa(
-                encodeURIComponent(
-                  `${UTILS.simplifiedName(query)} ${e?.padStart(2, "0")}`
-                )
-              ),
-          ];
-        }
-      }
-
-      result = await UTILS.queue(promises, 1);
-      batchResult = await UTILS.queue(batchPromises, 1);
+      batchResult = [...batchResult, ...altBatchResult];
+      result = [...result, ...altResult];
     }
 
     result = removeDuplicate(result, "Title");
@@ -224,15 +192,13 @@ app
     console.log({ after_looking_ranges: batchResult.length });
     console.log({ matches: matches.length });
     console.log({ batchResult: batchResult.length });
+    console.log({ properresult: result.length });
+
     console.log({ matches: matches.map((el) => el["Title"]) });
     console.log({ batchResult: batchResult.map((el) => el["Title"]) });
+    console.log({ properresult: result.map((el) => el["Title"]) });
 
     console.log({ result: result.length });
-
-    result = result.sort((a, b) => {
-      // return -(+a["Seeders"] - +b["Seeders"]) ?? 0;
-      return -(+a["Peers"] - +b["Peers"]) ?? 0;
-    });
 
     matches = matches.sort((a, b) => {
       // return -(+a["Seeders"] - +b["Seeders"]) ?? 0;
@@ -247,9 +213,15 @@ app
     result = [
       ...(matches.length > 20 ? matches.slice(0, 20) : matches),
       ...(batchResult.length > 20 ? batchResult.slice(0, 20) : batchResult),
+      // ...(result.length > 20 ? result.slice(0, 20) : result),
       ...result,
     ];
     result = removeDuplicate(result, "Title");
+
+    result = result.sort((a, b) => {
+      // return -(+a["Seeders"] - +b["Seeders"]) ?? 0;
+      return -(+a["Peers"] - +b["Peers"]) ?? 0;
+    });
 
     console.log({ "Retenus for filtering": result.length });
 
@@ -279,14 +251,14 @@ app
     console.log({ "Parsed torrents": torrentParsed.length });
 
     let stream_results = await Promise.all([
-      UTILS.toRDStream(torrentParsed, {
-        media,
-        s,
-        e,
-        abs,
-        abs_season,
-        abs_episode,
-      }),
+      // UTILS.toRDStream(torrentParsed, {
+      //   media,
+      //   s,
+      //   e,
+      //   abs,
+      //   abs_season,
+      //   abs_episode,
+      // }),
       UTILS.toPMStream(torrentParsed, {
         media,
         s,

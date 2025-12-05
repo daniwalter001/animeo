@@ -68,8 +68,31 @@ const getRanges = (title, year = null) => {
   return ranges;
 };
 
+let getAvatarName = (name = "") => {
+  let avatar = name.split(" ");
+  avatar = avatar.map((el) => el.charAt(0));
+  return avatar.join("").toUpperCase();
+};
+
+let cleanKitsuName = (name = "") => {
+  return name
+    .replace(/(S|s)eason\s\d{1,3}/gim, "")
+    .replace(/(\(\d{1,}\))/gim, "")
+    .replace(/\s\d{1,3}/gim, "")
+    .trim();
+};
+
+function isLatinValid(str) {
+  // Regex pattern for Latin alphabet, numbers and special characters
+  const latinPattern = /^[a-zA-ZÀ-ÿ0-9!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?\s]+$/;
+  return latinPattern.test(str);
+}
+
 module.exports = {
   removeDuplicate,
   getRanges,
   REGEX,
+  getAvatarName,
+  cleanKitsuName,
+  isLatinValid,
 };

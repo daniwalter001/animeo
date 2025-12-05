@@ -1,8 +1,6 @@
 require("dotenv").config();
-var torrentStream = require("torrent-stream");
 const parseTorrent = require("parse-torrent");
 const fetch = require("node-fetch");
-var torrentStream = require("torrent-stream");
 const { PM } = require("./pm");
 const AllDebrid = require("./ad");
 const DebridLink = require("./dl");
@@ -338,6 +336,7 @@ async function getImdbFromKitsu(id) {
             ? (meta["imdbEpisode"] ?? 1).toString()
             : (meta["episode"] ?? 1).toString(),
           meta["imdbEpisode"] != meta["episode"] || meta["imdbSeason"] == 1,
+          "aliases" in json ? json["aliases"] : [],
         ];
       } catch (error) {
         return null;

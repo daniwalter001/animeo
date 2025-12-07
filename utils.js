@@ -1428,7 +1428,6 @@ module.exports = {
   getImdbFromKitsu,
   isRedirect,
   getParsedFromMagnetorTorrentFile,
-  toStream,
   isVideo,
   getSize,
   getQuality,

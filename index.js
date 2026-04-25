@@ -230,14 +230,14 @@ app
     let torrentParsed = result;
 
     let stream_results = await Promise.all([
-      // UTILS.toRDStream(torrentParsed, {
-      //   media,
-      //   s,
-      //   e,
-      //   abs,
-      //   abs_season,
-      //   abs_episode,
-      // }),
+      UTILS.toRDStream(torrentParsed, {
+        media,
+        s,
+        e,
+        abs,
+        abs_season,
+        abs_episode,
+      }),
       UTILS.toPMStream(torrentParsed, {
         media,
         s,

@@ -816,64 +816,7 @@ const toRDStream = async (
   { media, s, e, abs, abs_season, abs_episode },
 ) => {
   try {
-    torrents = torrents.filter(
-      (tor) => !!tor.parsedTor && !!tor.parsedTor.files,
-    );
-
-    torrents = torrents.map((tor) => {
-      let parsed = tor.parsedTor;
-
-      if (media == "series") {
-        index = (parsed?.files ?? []).findIndex((element) => {
-          if (!element["name"]) {
-            return false;
-          }
-
-          let name = element["name"].toLowerCase();
-
-          if (name.includes("live") || name.includes("ova")) {
-            return false;
-          }
-
-          return (
-            isVideo(element) &&
-            getFittedFile(name, s, e, abs, abs_season, abs_episode)
-          );
-        });
-
-        if (index == -1) {
-          return null;
-        }
-        return {
-          ...tor,
-          index,
-        };
-      } else if (media == "movie") {
-        index = (parsed?.files ?? []).findIndex((element, index) => {
-          return isVideo(element);
-        });
-        //
-        if (index == -1) {
-          return null;
-        }
-
-        return {
-          ...tor,
-          index,
-        };
-      }
-
-      return null;
-    });
-
-
     torrents = torrents.filter((tor) => !!tor);
-
-    console.log({ fitted_rd: torrents.length });
-
-    console.log(
-      "Trynna some RD with " + torrents.length.toString() + " torrents",
-    );
 
     let MAX_ELEMENT = torrents.length;
     let sleepArr = Array.from({ length: MAX_ELEMENT }, (_, i) => i * 900);
@@ -881,17 +824,12 @@ const toRDStream = async (
     torrents = await Promise.all(
       torrents.map(async (tor) => {
         let details = [];
-        let infoHash =
-          parseTorrent.toMagnetURI(tor.parsedTor) ||
-          tor.parsedTor.infoHash.toLowerCase();
+        let infoHash = tor.Hash.toLowerCase();
 
         let sleep = sleepArr.pop();
-        // let sleep = sleepArr[Math.floor(Math.random() * MAX_ELEMENT)];
 
         console.log("sleeping before adding for " + sleep.toString() + " ms");
         await new Promise((r) => setTimeout(r, sleep));
-
-        //console.log({ infoHash });
 
         let added = await RealDebrid.addTorrentFileinRD(infoHash);
 
@@ -942,24 +880,40 @@ const toRDStream = async (
           );
           let links = torrentDetails["links"] ?? [];
 
-          let selectedIndex =
-            files.length == 1
-              ? 0
-              : files.findIndex((el) =>
-                  el["path"]
-                    ?.toLowerCase()
-                    ?.includes(
-                      tor.parsedTor.files[tor.index]["name"]?.toLowerCase(),
-                    ),
-                );
+          let selectedIndex = -1;
+
+          if (files.length == 1) {
+            selectedIndex = 0;
+          } else {
+            selectedIndex = files.findIndex((el) =>
+              getFittedFile(
+                el["path"]?.toLowerCase() ?? "",
+                s,
+                e,
+                abs,
+                abs_season,
+                abs_episode,
+              ),
+            );
+          }
+
           console.log({ selectedIndex });
-          details = [
-            await RealDebrid.unrestrictLinkfromRD(links[selectedIndex] ?? null),
-          ];
+
+          if (selectedIndex == -1) {
+            console.log("no suitable file selected...deleting");
+            let deleted = await RealDebrid.deleteTorrent(tor.rdId);
+            console.log({ deleted });
+            return false;
+          }
+
+          details = await RealDebrid.unrestrictLinkfromRD(
+            links[selectedIndex] ?? null,
+          );
 
           return {
             ...tor,
             details,
+            idx: selectedIndex,
           };
         } catch (error) {
           console.log({ error });
@@ -971,55 +925,31 @@ const toRDStream = async (
     torrents = torrents.filter((tor) => !!tor);
 
     let streams = torrents.map((tor) => {
-      let parsed = tor.parsedTor;
-      let infoHash = tor.parsedTor.infoHash.toLowerCase();
+      let infoHash = tor.Hash.toLowerCase();
       let index = tor?.index ?? -1;
 
-      let title = tor.extraTag || parsed.name;
-      title = !!title ? title + "\n" + parsed?.files[index]["name"] : null;
-      title = title ?? parsed.files[index]["name"];
+      let title = tor.Title
+        ? tor?.Title + "\n" + tor?.details["filename"]
+        : tor?.details["filename"];
+
       title += "\n" + getQuality(title);
       const subtitle = "S:" + tor["Seeders"] + " | P:" + tor["Peers"];
       title += ` | ${
-        index == -1 || parsed.files == []
+        index == -1
           ? `${getSize(0)}`
-          : `${getSize(parsed.files[index]["length"] ?? 0)}`
+          : `${getSize(tor?.details?.["filesize"] ?? 0)}`
       } | ${subtitle}`;
 
-      if (
-        tor?.details &&
-        tor?.details?.length > 0 &&
-        tor?.details[tor.details.length > 1 ? index : 0]["download"]
-      ) {
+      if (tor?.details && tor?.details?.["download"]) {
         return {
           name: `[⚡RD⚡] ${tor["Tracker"]} ${getQuality(title)}`,
-          url: tor?.details[tor.details.length > 1 ? index : 0]["download"],
-          title:
-            title ??
-            tor?.details[tor.details.length > 1 ? index : 0]["filename"],
+          url: tor?.details["download"],
+          title: title ?? tor?.details["filename"],
           behaviorHints: {
             bingeGroup: `001-Addon|${infoHash}`,
           },
         };
       }
-
-      if (process.env.PUBLIC == "1")
-        return {
-          name: `${tor["Tracker"]} ${getQuality(title)}`,
-          type: media,
-          infoHash: infoHash,
-          fileIdx: index == -1 ? 0 : index,
-          sources: (parsed.announce || [])
-            .map((x) => {
-              return "tracker:" + x;
-            })
-            .concat(["dht:" + infoHash]),
-          title: title + getFlagFromName(title),
-          behaviorHints: {
-            bingeGroup: `001-Addon|${infoHash}`,
-            notWebReady: true,
-          },
-        };
 
       return null;
     });
@@ -1091,7 +1021,6 @@ const toTBStream = async (
 
   let hashes = torrents.map((tor) => tor.parsedTor.infoHash.toLowerCase());
 
-  console.log({ hashes });
 
   let cached = await TB.checkCachedTorrent(hashes);
 

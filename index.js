@@ -271,7 +271,7 @@ app
           if (cache_ok) {
             await redis.expireAt(
               `${config.id}|${id}`,
-              new Date(Date.now() + 1000 * 60 * 60 * 24 * 10), //10 days
+              new Date(Date.now() + 1000 * 60 * 60 * 24 * 1), //1 days
             );
           }
           console.log({ cache_ok });

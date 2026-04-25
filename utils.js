@@ -148,24 +148,6 @@ let fetchNyaaRssTorrent2 = async (query, type) => {
 
 let hosts = [];
 
-const raw_content = require("fs").readFileSync("./servers.txt");
-let content = Buffer.isBuffer(raw_content)
-  ? raw_content.toString()
-  : raw_content;
-hosts = content
-  .split("\n")
-  .map((el) => el.trim())
-  .map((el) => {
-    if (!el.includes("|")) return null;
-    return {
-      host: el.split("|")[0],
-      apiKey: el.split("|").pop(),
-    };
-  });
-
-hosts = hosts.filter((el) => !!el);
-
-// const api = "http://localhost:3009/torrent";
 const api = "https://nyaascrapper.vercel.app/torrent";
 
 let fetchNyaa = async (query, type = "series", s = 0) => {
@@ -1020,7 +1002,6 @@ const toTBStream = async (
   torrents = torrents.filter((tor) => !!tor);
 
   let hashes = torrents.map((tor) => tor.parsedTor.infoHash.toLowerCase());
-
 
   let cached = await TB.checkCachedTorrent(hashes);
 

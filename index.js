@@ -55,7 +55,7 @@ app
         let stream_cached = await redis.json.get(config.id + "|" + id);
         if (!!stream_cached) {
           console.log(
-            `Returning results from cache: ${stream_cached?.length} found`
+            `Returning results from cache: ${stream_cached?.length} found`,
           );
           await redis.disconnect();
           return res.send({ streams: stream_cached });
@@ -89,7 +89,7 @@ app
     const avatarName = getAvatarName(meta?.name);
 
     aliases = aliases.filter(
-      (e) => isLatinValid(e) && e != meta.name && e != avatarName
+      (e) => isLatinValid(e) && e != meta.name && e != avatarName,
     );
     let altName = aliases && aliases.length > 0 ? aliases[0] : null;
 
@@ -101,7 +101,7 @@ app
     // query = query.replace(/['<>:]/g, "");
 
     let { batchResult, result } = await search({
-      fn: UTILS.fetchNyaa,
+      fn: UTILS.fetchNyaaRssTorrent2,
       query,
       media,
       s,
@@ -114,7 +114,7 @@ app
 
     if (altName && altName.length > 0) {
       let { batchResult: altBatchResult, result: altResult } = await search({
-        fn: UTILS.fetchNyaa,
+        fn: UTILS.fetchNyaaRssTorrent2,
         query: altName,
         media,
         s,
@@ -186,7 +186,7 @@ app
     }
 
     batchResult = batchResult.filter(
-      (el) => !checked.includes(el) && !matches.includes(el)
+      (el) => !checked.includes(el) && !matches.includes(el),
     );
 
     console.log({ after_looking_ranges: batchResult.length });
@@ -201,12 +201,10 @@ app
     console.log({ result: result.length });
 
     matches = matches.sort((a, b) => {
-      // return -(+a["Seeders"] - +b["Seeders"]) ?? 0;
       return -(+a["Peers"] - +b["Peers"]) ?? 0;
     });
 
     batchResult = batchResult.sort((a, b) => {
-      // return -(+a["Seeders"] - +b["Seeders"]) ?? 0;
       return -(+a["Peers"] - +b["Peers"]) ?? 0;
     });
 
@@ -218,37 +216,18 @@ app
     ];
     result = removeDuplicate(result, "Title");
 
-    result = result.sort((a, b) => {
-      // return -(+a["Seeders"] - +b["Seeders"]) ?? 0;
-      return -(+a["Peers"] - +b["Peers"]) ?? 0;
-    });
-
     console.log({ "Retenus for filtering": result.length });
 
     const MAX_RES = process.env.MAX_RES ?? 20;
     result = result?.length >= MAX_RES ? result.splice(0, MAX_RES) : result;
 
-    // ----------------------------------------------------------------------------
-
     result = (result ?? []).filter(
-      (torrent) => torrent["MagnetUri"] != "" && torrent["Peers"] >= 0
+      (torrent) => torrent["MagnetUri"] != "" && torrent["Peers"] >= 0,
     );
 
     console.log({ "Result after removing low peers items": result.length });
 
-    torrentParsed = await UTILS.queue(
-      result.map(
-        (torrent) => () =>
-          UTILS.getParsedFromMagnetorTorrentFile(torrent, torrent["MagnetUri"])
-      ),
-      5
-    );
-    torrentParsed = torrentParsed.filter(
-      (torrent) =>
-        torrent && torrent?.parsedTor && torrent?.parsedTor?.files?.length > 0
-    );
-
-    console.log({ "Parsed torrents": torrentParsed.length });
+    let torrentParsed = result;
 
     let stream_results = await Promise.all([
       // UTILS.toRDStream(torrentParsed, {
@@ -287,12 +266,12 @@ app
           let cache_ok = await redis.json.set(
             `${config.id}|${id}`,
             "$",
-            stream_results
+            stream_results,
           );
           if (cache_ok) {
             await redis.expireAt(
               `${config.id}|${id}`,
-              new Date(Date.now() + 1000 * 60 * 60 * 24 * 10) //10 days
+              new Date(Date.now() + 1000 * 60 * 60 * 24 * 10), //10 days
             );
           }
           console.log({ cache_ok });

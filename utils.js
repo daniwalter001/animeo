@@ -42,19 +42,19 @@ let containEandS = (name = "", s, e, abs, abs_season, abs_episode) =>
   name?.includes(`season ${s} e${e}`) ||
   (!!abs &&
     (name?.includes(
-      `s${abs_season?.padStart(2, "0")}e${abs_episode?.padStart(2, "0")}`
+      `s${abs_season?.padStart(2, "0")}e${abs_episode?.padStart(2, "0")}`,
     ) ||
       name?.includes(
-        `s${s?.padStart(2, "0")}e${abs_episode?.padStart(2, "0")}`
+        `s${s?.padStart(2, "0")}e${abs_episode?.padStart(2, "0")}`,
       ) ||
       name?.includes(
-        `s${s?.padStart(2, "0")}e${abs_episode?.padStart(3, "0")}`
+        `s${s?.padStart(2, "0")}e${abs_episode?.padStart(3, "0")}`,
       ) ||
       name?.includes(
-        `s${abs_season?.padStart(2, "0")}e${abs_episode?.padStart(3, "0")}`
+        `s${abs_season?.padStart(2, "0")}e${abs_episode?.padStart(3, "0")}`,
       ) ||
       name?.includes(
-        `s${abs_season?.padStart(2, "0")}e${abs_episode?.padStart(4, "0")}`
+        `s${abs_season?.padStart(2, "0")}e${abs_episode?.padStart(4, "0")}`,
       )));
 
 let containE_S = (name = "", s, e, abs, abs_season, abs_episode) =>
@@ -91,8 +91,6 @@ let containsAbsoluteE_ = (name = "", s, e, abs, abs_season, abs_episode) =>
   name?.includes(` ${abs_episode?.padStart(4, "0")}.`);
 
 let fetchNyaaRssTorrent2 = async (query, type) => {
-  // let url = `${host}/api/v2.0/indexers/all/results?apikey=${apiKey}&Query=${query}&Tracker%5B%5D=nyaasi`;
-
   query = decodeURIComponent(query).replace(/\s/g, "+");
 
   let url = `https://nyaa.si/?page=rss&q=${query}&c=1_0&f=0`;
@@ -128,13 +126,14 @@ let fetchNyaaRssTorrent2 = async (query, type) => {
                 Seeders: result["nyaa:seeders"],
                 Category: result["nyaa:category"],
                 Title: result["title"],
+                Hash: result["nyaa:infoHash"],
                 Link: result["link"],
                 MagnetUri: result["link"],
                 Date: result["pubDate"],
                 Description: result["description"],
               });
             });
-          })
+          }),
         );
         return torrent_results;
       } else {
@@ -218,7 +217,7 @@ let fetchNyaa = async (query, type = "series", s = 0) => {
                   Cookie: "cookie" in results ? results["cookie"] : "",
                 });
               });
-            })
+            }),
           );
           clearTimeout(timeoutId);
           return torrent_results;
@@ -275,7 +274,7 @@ let fetchNyaaRssTorrent = async (query, type = "series") => {
                   MagnetUri: result["MagnetUri"],
                 });
               });
-            })
+            }),
           );
           clearTimeout(timeoutId);
           return torrent_results;
@@ -311,7 +310,7 @@ function getMeta(id, type) {
         .then((json) => {
           return json.d[0];
         })
-        .then(({ l, y }) => ({ name: l, year: y }))
+        .then(({ l, y }) => ({ name: l, year: y })),
     );
 }
 
@@ -366,7 +365,7 @@ const queue = async (queue = [], nbreConcurrent = 1) => {
     console.log(
       `TQueue: ${totalQ} | Run: ${i + 1}/${run} | CQueue: ${
         sQueue.length
-      } | from ${range.start} to ${range.end}`
+      } | from ${range.start} to ${range.end}`,
     );
     const temp = await Promise.all(sQueue.map((el) => el()));
     result = [...result, ...(temp ? temp.flat() : [])];
@@ -393,7 +392,7 @@ let isRedirect = async (url) => {
     if (response.status === 301 || response.status === 302) {
       const locationURL = new URL(
         response.headers.get("location"),
-        response.url
+        response.url,
       );
       if (response.headers.get("location").startsWith("http")) {
         await isRedirect(locationURL);
@@ -442,13 +441,13 @@ const getParsedFromMagnetorTorrentFile = (tor, uri) => {
 
 const toDLStream = async (
   torrents = [],
-  { media, s, e, abs, abs_season, abs_episode }
+  { media, s, e, abs, abs_season, abs_episode },
 ) => {
   try {
     let hashes = torrents.map((tor) => tor.parsedTor.infoHash.toLowerCase());
 
     let magnetsData = await Promise.all(
-      hashes.map((hash) => DebridLink.checkMagnet(hash))
+      hashes.map((hash) => DebridLink.checkMagnet(hash)),
     );
 
     if (magnetsData) {
@@ -531,104 +530,161 @@ const toDLStream = async (
   }
   return [];
 };
+
 const toADStream = async (
   torrents = [],
-  { media, s, e, abs, abs_season, abs_episode }
+  { media, s, e, abs, abs_season, abs_episode },
 ) => {
   try {
-    let hashes = torrents.map((tor) => tor.parsedTor.infoHash.toLowerCase());
+    let hashes = torrents.map((tor) =>
+      parseTorrent(tor.MagnetUri).infoHash.toLowerCase(),
+    );
 
     let magnetsData = await AllDebrid.uploadMagnet(hashes);
 
-    if (magnetsData) {
-      let mappedIds = magnetsData.map((m) => m["id"]);
-      let files = await AllDebrid.getFilesAndLinks(mappedIds);
+    let toRemove = [];
 
-      let mappedFiles = files.map((f) => {
-        if ("files" in f) {
-          return AllDebrid.parseFilesAndLinks(f.files);
-        }
-      });
+    if (!magnetsData) return [];
 
-      let suitables = mappedFiles.map((f) => {
-        return f.find((file) => {
-          let lower = `${file["name"]}`.toLowerCase();
-          if (!isVideo(file)) return null;
-          return media == "series"
-            ? getFittedFile(lower, s, e, abs, abs_season, abs_episode)
-              ? file
-              : null
-            : file;
+    let mappedIds = magnetsData.map((m) => m["id"]);
+    let files = await AllDebrid.getFilesAndLinks(mappedIds);
+
+    let mappedFiles = files.map((f) => {
+      if ("files" in f) {
+        return AllDebrid.parseFilesAndLinks({
+          data: f.files,
+          id: f.id,
         });
+      }
+    });
+
+    let suitables = mappedFiles.map((f) => {
+      let fittedIdx = f?.files?.findIndex((file) => {
+        let lower = `${file["name"]}`.toLowerCase();
+        if (
+          !isVideo(file) ||
+          (media == "series" &&
+            (lower.includes("live") ||
+              lower.includes("ova") ||
+              lower.includes("oav")))
+        )
+          return false;
+
+        return media == "series"
+          ? getFittedFile(lower, s, e, abs, abs_season, abs_episode)
+            ? file
+            : false
+          : file;
       });
 
-      suitables = suitables.filter((f) => !!f);
+      if (fittedIdx == -1) {
+        toRemove.push(f);
+        return false;
+      }
 
-      console.log({ fitted_ad: suitables.length });
+      let fittedFile = f?.files?.[fittedIdx];
 
-      let streams = await Promise.all(
-        suitables.map((f) => AllDebrid.unlockLink(f["link"]))
+      return { file: fittedFile, id: f.id, idx: fittedIdx };
+    });
+
+    suitables = suitables.filter((f) => !!f && !!f.file);
+
+    console.log({ fitted_ad: suitables?.length });
+
+    let streams = await Promise.all(
+      suitables.map((fd) =>
+        (async () => ({
+          resolve: await AllDebrid.unlockLink(fd.file["link"]),
+          id: fd.id,
+          idx: fd.idx,
+        }))(),
+      ),
+    );
+
+    streams = streams.filter((f) => !!f && !!f.resolve && !!f.id);
+
+    console.log({ streams: streams.length });
+
+    let r = Array.from({
+      length: toRemove.length,
+    }).map((_, i) => {
+      return 200 * i;
+    });
+
+    try {
+      await Promise.all(
+        toRemove.map(async (f) => {
+          let sleep = r.pop();
+          await new Promise((resolve) => setTimeout(resolve, sleep));
+          console.log({ "deleted?": await AllDebrid.deleteMagnet(f.id) });
+        }),
       );
+    } catch (error) {}
 
-      console.log({ streams: streams.length });
+    //Match streams with torrents
+    streams = streams.map(({ resolve: s, id, idx: index }, i) => {
+      let suitableTorrent;
+      let infoHash = "";
 
-      //Match streams with torrents
-      streams = streams.map((s, i) => {
-        let suitableTorrent;
-        let index = -1;
-        let infoHash = "";
+      try {
+        suitableHash = magnetsData
+          .find((m) => {
+            return m.id == id;
+          })
+          ?.hash?.toLowerCase();
 
-        try {
-          suitableTorrent = torrents.find((tor) => {
-            return tor.parsedTor.files
-              .map((el) => el["name"])
-              .includes(s["filename"]);
-          });
-          infoHash = suitableTorrent?.parsedTor?.infoHash;
-          index = suitableTorrent.parsedTor.files.findIndex((el) => {
-            return el["name"] == s["filename"];
-          });
-        } catch (error) {
-          console.log({ error });
+        if (!suitableHash) {
+          console.log(`No suitable hash found for id ${id}`);
+          return null;
         }
 
-        let title = !!suitableTorrent
-          ? suitableTorrent["Title"] +
-            "\n" +
-            suitableTorrent.parsedTor.files[index]["name"]
-          : s["filename"];
+        suitableTorrent = torrents.find((tor) => {
+          return (
+            tor.MagnetUri &&
+            parseTorrent(tor.MagnetUri).infoHash.toLowerCase() == suitableHash
+          );
+        });
 
-        let toReturn = {
-          name: `[⚡AD⚡] ${suitableTorrent["Tracker"]} ${getQuality(title)}`,
-          type: media,
-          fileIdx: index == -1 ? 0 : index,
-          url: s["link"],
-          title:
-            title +
-            " " +
-            getFlagFromName(title) +
-            `\n${getSize(s["filesize"])}`,
+        infoHash = suitableHash;
+      } catch (error) {
+        console.log({ error });
+      }
+
+      let title = !!suitableTorrent
+        ? suitableTorrent["Title"] + "\n" + s["filename"]
+        : s["filename"];
+
+      let toReturn = {
+        name: `[⚡AD⚡] ${suitableTorrent?.["Tracker"]} ${getQuality(title)}`,
+        type: media,
+        fileIdx: index == -1 ? 0 : index,
+        url: s["link"],
+        title:
+          title +
+          " " +
+          getFlagFromName(title) +
+          `\n${getSize(s["filesize"])}` +
+          `|  ${getCodecEmoji(title)}`,
+        behaviorHints: {
+          notWebReady: true,
+        },
+      };
+
+      if (suitableTorrent) {
+        toReturn = {
+          ...toReturn,
+          infoHash: infoHash,
           behaviorHints: {
-            notWebReady: true,
+            ...toReturn.behaviorHints,
+            bingeGroup: `001-Addon|${infoHash}`,
           },
         };
+      }
 
-        if (suitableTorrent) {
-          toReturn = {
-            ...toReturn,
-            infoHash: infoHash,
-            behaviorHints: {
-              ...toReturn.behaviorHints,
-              bingeGroup: `001-Addon|${infoHash}`,
-            },
-          };
-        }
+      return toReturn;
+    });
 
-        return toReturn;
-      });
-
-      return streams;
-    }
+    return streams;
   } catch (error) {
     console.log({ error });
   }
@@ -637,67 +693,10 @@ const toADStream = async (
 
 const toPMStream = async (
   torrents = [],
-  { media, s, e, abs, abs_season, abs_episode }
+  { media, s, e, abs, abs_season, abs_episode },
 ) => {
   try {
-    torrents = torrents.filter((tor) => {
-      return !!tor.parsedTor && !!tor.parsedTor?.files;
-    });
-
-    torrents = torrents.map((tor) => {
-      let parsed = tor.parsedTor;
-
-      if (media == "series") {
-        index = (parsed?.files ?? []).findIndex((element) => {
-          if (!element["name"]) {
-            return false;
-          }
-
-          let name = element["name"].toLowerCase();
-
-          if (name.includes("live") || name.includes("ova")) {
-            return false;
-          }
-
-          return (
-            isVideo(element) &&
-            getFittedFile(name, s, e, abs, abs_season, abs_episode)
-          );
-        });
-
-        if (index == -1) {
-          return null;
-        }
-
-        return {
-          ...tor,
-          index,
-        };
-      } else if (media == "movie") {
-        index = (parsed?.files ?? []).findIndex((element, index) => {
-          return isVideo(element);
-        });
-        //
-        if (index == -1) {
-          return null;
-        }
-
-        return {
-          ...tor,
-          index,
-        };
-      }
-
-      return null;
-    });
-
-    //
-
-    //================= PM ==================
-
     torrents = torrents.filter((tor) => !!tor);
-
-    console.log({ fitted_pm: torrents.length });
 
     console.log("Trynna some PM");
 
@@ -705,14 +704,13 @@ const toPMStream = async (
       torrents
         .filter((tor) => !!tor)
         .map(async (tor) => {
-          let details = [];
-          let infoHash = tor.parsedTor.infoHash.toLowerCase();
+          let details = {};
+          let infoHash = tor.Hash.toLowerCase();
 
           let isCached = await PM.checkCached(infoHash);
 
           if (isCached) {
             let cache = await PM.getDirectDl(infoHash);
-            console.log({ cache: cache?.length, name: isCached });
             if (cache && cache.length) {
               let index = -1;
               if (media == "series") {
@@ -739,7 +737,7 @@ const toPMStream = async (
                       e,
                       abs,
                       abs_season,
-                      abs_episode
+                      abs_episode,
                     )
                   );
                 });
@@ -747,8 +745,6 @@ const toPMStream = async (
                 if (index == -1) {
                   return null;
                 }
-
-                // console.log({ index });
               } else if (media == "movie") {
                 index = (cache ?? []).findIndex((element) => {
                   element["name"] =
@@ -761,10 +757,8 @@ const toPMStream = async (
                   return null;
                 }
               }
-              console.log(`Cached index: ${index}`);
-              details = [cache[index]];
+              details = cache[index];
 
-              //return with dl details and index
               return {
                 ...tor,
                 details,
@@ -772,69 +766,37 @@ const toPMStream = async (
               };
             }
           }
-          return tor;
-        })
+          return null;
+        }),
     );
 
     torrents = torrents.filter(
-      (tor) => !!tor
-      // (tor) => !!tor && !!tor.details && !isNaN(tor.details.length)
+      (tor) => !!tor && "details" in tor && !!tor.details,
     );
 
+    console.log({ pm_fitted: torrents.length });
+
     let streams = torrents.map((tor) => {
-      let parsed = tor.parsedTor;
-      let infoHash = tor.parsedTor.infoHash.toLowerCase();
-      let index = tor?.index ?? tor?.dlIndex ?? -1;
+      let details = tor.details;
+      let infoHash = tor.Hash.toLowerCase();
+      let index = tor?.dlIndex ?? -1;
 
-      let title = tor.extraTag || parsed.name;
-      title = !!title ? title + "\n" + parsed?.files[index]["name"] : null;
-      title = title ?? parsed.files[index]["name"];
+      let title = tor?.Title ? tor.Title + "\n" + details?.name : details?.name;
       title += "\n" + getQuality(title);
-      const subtitle = "S:" + tor["Seeders"] + " | P:" + tor["Peers"];
       title += ` | ${
-        index == -1 || parsed.files == []
-          ? `${getSize(0)}`
-          : `${getSize(parsed.files[index]["length"] ?? 0)}`
-      } | ${subtitle}`;
+        index == -1 ? `${getSize(0)}` : `${getSize(details?.size ?? 0)}`
+      }`;
 
-      if (
-        "details" in tor &&
-        tor.details.length > 0 &&
-        tor.details[tor.details.length > 1 ? tor.dlIndex : 0]["stream_link"]
-      ) {
+      if (details && details?.["stream_link"]) {
         return {
           name: `[⚡PM⚡] ${tor["Tracker"]} ${getQuality(title)}`,
-          url:
-            tor.details[tor.details.length > 1 ? tor.dlIndex : 0]["link"] ??
-            tor.details[tor.details.length > 1 ? tor.dlIndex : 0][
-              "stream_link"
-            ],
-          title:
-            title ??
-            tor.details[tor.details.length > 1 ? tor.dlIndex : 0]["name"],
+          url: details["link"] ?? details["stream_link"],
+          title: title ?? details["name"],
           behaviorHints: {
             bingeGroup: `001-Addon|${infoHash}`,
           },
         };
       }
-
-      // if (process.env.PUBLIC == "1")
-      //   return {
-      //     name: `${tor["Tracker"]}`,
-      //     type: media,
-      //     infoHash: infoHash,
-      //     fileIdx: tor.index == -1 ? 0 : index,
-      //     sources: (parsed.announce || [])
-      //       .map((x) => {
-      //         return "tracker:" + x;
-      //       })
-      //       .concat(["dht:" + infoHash]),
-      //     title: title + getFlagFromName(title),
-      //     behaviorHints: {
-      //       bingeGroup: `001-Addon|${infoHash}`,
-      //       notWebReady: true,
-      //     },
-      //   };
 
       return null;
     });
@@ -851,11 +813,11 @@ const toPMStream = async (
 
 const toRDStream = async (
   torrents = [],
-  { media, s, e, abs, abs_season, abs_episode }
+  { media, s, e, abs, abs_season, abs_episode },
 ) => {
   try {
     torrents = torrents.filter(
-      (tor) => !!tor.parsedTor && !!tor.parsedTor.files
+      (tor) => !!tor.parsedTor && !!tor.parsedTor.files,
     );
 
     torrents = torrents.map((tor) => {
@@ -904,14 +866,13 @@ const toRDStream = async (
       return null;
     });
 
-    //================= PM ==================
 
     torrents = torrents.filter((tor) => !!tor);
 
     console.log({ fitted_rd: torrents.length });
 
     console.log(
-      "Trynna some RD with " + torrents.length.toString() + " torrents"
+      "Trynna some RD with " + torrents.length.toString() + " torrents",
     );
 
     let MAX_ELEMENT = torrents.length;
@@ -942,7 +903,7 @@ const toRDStream = async (
               rdId: added.id,
             }
           : null;
-      })
+      }),
     );
 
     torrents = torrents.filter((tor) => !!tor);
@@ -954,7 +915,7 @@ const toRDStream = async (
           let details = [];
           let sleep = sleepArr.pop();
           console.log(
-            "sleeping before selecting for " + sleep.toString() + " ms"
+            "sleeping before selecting for " + sleep.toString() + " ms",
           );
           await new Promise((r) => setTimeout(r, sleep));
 
@@ -977,7 +938,7 @@ const toRDStream = async (
           }
 
           let files = (torrentDetails["files"] ?? []).filter(
-            (el) => el["selected"] == 1
+            (el) => el["selected"] == 1,
           );
           let links = torrentDetails["links"] ?? [];
 
@@ -988,8 +949,8 @@ const toRDStream = async (
                   el["path"]
                     ?.toLowerCase()
                     ?.includes(
-                      tor.parsedTor.files[tor.index]["name"]?.toLowerCase()
-                    )
+                      tor.parsedTor.files[tor.index]["name"]?.toLowerCase(),
+                    ),
                 );
           console.log({ selectedIndex });
           details = [
@@ -1004,7 +965,7 @@ const toRDStream = async (
           console.log({ error });
           return false;
         }
-      })
+      }),
     );
 
     torrents = torrents.filter((tor) => !!tor);
@@ -1077,7 +1038,7 @@ const toRDStream = async (
 
 const toTBStream = async (
   torrents = [],
-  { media, s, e, abs, abs_season, abs_episode }
+  { media, s, e, abs, abs_season, abs_episode },
 ) => {
   torrents = torrents.filter((tor) => {
     return !!tor.parsedTor && !!tor.parsedTor?.files;
@@ -1172,7 +1133,7 @@ const toTBStream = async (
         };
       };
     }),
-    5
+    5,
   );
 
   torrents = torrents.filter((tor) => !!tor && !!tor.torrent_id);
@@ -1186,7 +1147,7 @@ const toTBStream = async (
         };
       };
     }),
-    3
+    3,
   );
 
   torrents = torrents.filter((tor) => !!tor && !!tor.torrentInfo);
@@ -1216,7 +1177,7 @@ const toTBStream = async (
         };
       };
     }),
-    5
+    5,
   );
 
   let streams = torrents.map((tor) => {
@@ -1359,10 +1320,10 @@ const bringFrenchVideoToTheTopOfList = (streams = []) => {
       isMultiContent(a_lower)
       ? -1
       : isVfContent(b_lower) ||
-        isVostfrContent(b_lower) ||
-        isMultiContent(a_lower)
-      ? 1
-      : 0;
+          isVostfrContent(b_lower) ||
+          isMultiContent(a_lower)
+        ? 1
+        : 0;
   });
   return streams;
 };

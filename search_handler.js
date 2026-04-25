@@ -22,7 +22,7 @@ let search = async ({
     query += " " + meta?.year;
     result = await UTILS.queue(
       [() => fn(encodeURIComponent(UTILS.simplifiedName(query)), "movie")],
-      1
+      1,
     );
   } else if (media == "series") {
     let batchPromises = [];
@@ -32,16 +32,10 @@ let search = async ({
           encodeURIComponent(
             `${UTILS.simplifiedName(query)} S${s?.padStart(
               2,
-              "0"
-            )}E${e?.padStart(2, "0")}`
-          )
+              "0",
+            )}E${e?.padStart(2, "0")}`,
+          ),
         ),
-    ];
-
-    batchPromises = [
-      ...batchPromises,
-      () =>
-        fn(encodeURIComponent(`${UTILS.simplifiedName(query)}`), "series", s),
     ];
 
     if (abs) {
@@ -50,14 +44,13 @@ let search = async ({
         () =>
           fn(
             encodeURIComponent(
-              `${UTILS.simplifiedName(query)} ${abs_episode?.padStart(3, "0")}`
-            )
+              `${UTILS.simplifiedName(query)} ${abs_episode?.padStart(3, "0")}`,
+            ),
           ),
       ];
 
       batchPromises = [
         ...batchPromises,
-        // () => fn(encodeURIComponent(`${UTILS.simplifiedName(query)} complete`)),
         () => fn(encodeURIComponent(`${UTILS.simplifiedName(query)} batch`)),
       ];
     } else {
@@ -67,8 +60,8 @@ let search = async ({
           () =>
             fn(
               encodeURIComponent(
-                `${UTILS.simplifiedName(query)} ${e?.padStart(2, "0")}`
-              )
+                `${UTILS.simplifiedName(query)} ${e?.padStart(2, "0")}`,
+              ),
             ),
         ];
       }

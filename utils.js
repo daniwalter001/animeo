@@ -864,20 +864,16 @@ const toRDStream = async (
 
           let selectedIndex = -1;
 
-          if (files.length == 1) {
-            selectedIndex = 0;
-          } else {
-            selectedIndex = files.findIndex((el) =>
-              getFittedFile(
-                el["path"]?.toLowerCase() ?? "",
-                s,
-                e,
-                abs,
-                abs_season,
-                abs_episode,
-              ),
-            );
-          }
+          selectedIndex = files.findIndex((el) =>
+            getFittedFile(
+              el["path"]?.toLowerCase() ?? "",
+              s,
+              e,
+              abs,
+              abs_season,
+              abs_episode,
+            ),
+          );
 
           console.log({ selectedIndex });
 
@@ -908,11 +904,12 @@ const toRDStream = async (
 
     let streams = torrents.map((tor) => {
       let infoHash = tor.Hash.toLowerCase();
-      let index = tor?.index ?? -1;
+      let index = tor?.idx ?? -1;
 
       let title = tor.Title
         ? tor?.Title + "\n" + tor?.details["filename"]
         : tor?.details["filename"];
+
 
       title += "\n" + getQuality(title);
       const subtitle = "S:" + tor["Seeders"] + " | P:" + tor["Peers"];

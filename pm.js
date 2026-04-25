@@ -29,17 +29,10 @@ class PM {
     if (!hash) return false;
     let url = `https://www.premiumize.me/api/cache/check?apikey=${this.apikey}&items[]=${hash}`;
 
-    //console.log({url});
     try {
       let res = await fetch(url);
 
-      // console.log({ status: res.status, statusText: res.statusText });
       let resJson = (await res.json()) ?? {};
-
-      //console.log({ resJson });
-
-
-      console.log('========================================================================');
 
       if (this.checkPremiumizeRes(resJson)) {
         if (
@@ -212,7 +205,7 @@ class PM {
         resolve(
           itemList.find((el) => {
             return el["name"] == param;
-          })
+          }),
         );
       });
 
@@ -232,7 +225,7 @@ class PM {
         resolve(
           tranfers.find((el) => {
             return el["id"] == transferId || el["name"] == transferId;
-          })
+          }),
         );
       });
 
@@ -323,7 +316,7 @@ class PM {
         })
         .map((el) => {
           return this.deleteMagnetFromPM(el["id"]);
-        })
+        }),
     );
 
     return res;

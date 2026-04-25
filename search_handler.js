@@ -36,6 +36,16 @@ let search = async ({
             )}E${e?.padStart(2, "0")}`,
           ),
         ),
+
+        () =>
+        fn(
+          encodeURIComponent(
+            `${UTILS.simplifiedName(query)} S${s?.padStart(
+              2,
+              "0",
+            )}`,
+          ),
+        ),
     ];
 
     if (abs) {

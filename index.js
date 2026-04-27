@@ -189,29 +189,20 @@ app
       (el) => !checked.includes(el) && !matches.includes(el),
     );
 
-    console.log({ after_looking_ranges: batchResult.length });
-    console.log({ matches: matches.length });
-    console.log({ batchResult: batchResult.length });
-    console.log({ properresult: result.length });
+    // console.log({ after_looking_ranges: batchResult.length });
+    // console.log({ matches: matches.length });
+    // console.log({ batchResult: batchResult.length });
+    // console.log({ properresult: result.length });
 
-    console.log({ matches: matches.map((el) => el["Title"]) });
-    console.log({ batchResult: batchResult.map((el) => el["Title"]) });
-    console.log({ properresult: result.map((el) => el["Title"]) });
+    // console.log({ matches: matches.map((el) => el["Title"]) });
+    // console.log({ batchResult: batchResult.map((el) => el["Title"]) });
+    // console.log({ properresult: result.map((el) => el["Title"]) });
 
     console.log({ result: result.length });
-
-    matches = matches.sort((a, b) => {
-      return -(+a["Peers"] - +b["Peers"]) ?? 0;
-    });
-
-    batchResult = batchResult.sort((a, b) => {
-      return -(+a["Peers"] - +b["Peers"]) ?? 0;
-    });
 
     result = [
       ...(matches.length > 20 ? matches.slice(0, 20) : matches),
       ...(batchResult.length > 20 ? batchResult.slice(0, 20) : batchResult),
-      // ...(result.length > 20 ? result.slice(0, 20) : result),
       ...result,
     ];
     result = removeDuplicate(result, "Title");
@@ -221,9 +212,7 @@ app
     const MAX_RES = process.env.MAX_RES ?? 20;
     result = result?.length >= MAX_RES ? result.splice(0, MAX_RES) : result;
 
-    result = (result ?? []).filter(
-      (torrent) => torrent["MagnetUri"] != "" && torrent["Peers"] >= 0,
-    );
+    result = (result ?? []).filter((torrent) => torrent["Peers"] >= 0);
 
     console.log({ "Result after removing low peers items": result.length });
 

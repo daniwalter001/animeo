@@ -95,6 +95,8 @@ let fetchNyaaRssTorrent2 = async (query, type) => {
 
   let url = `https://nyaa.si/?page=rss&q=${query}&c=1_0&f=0`;
 
+  console.log({ url });
+
   return await fetch(url, {
     method: "GET",
   })
@@ -910,7 +912,6 @@ const toRDStream = async (
         ? tor?.Title + "\n" + tor?.details["filename"]
         : tor?.details["filename"];
 
-
       title += "\n" + getQuality(title);
       const subtitle = "S:" + tor["Seeders"] + " | P:" + tor["Peers"];
       title += ` | ${
@@ -1273,6 +1274,7 @@ const getFlagFromName = (file_name) => {
 let cleanName = (name = "") => {
   return name
     .replaceAll("-", " ")
+    .replaceAll("'", " ")
     .replace(/[^a-zA-Z0-9 ]/g, "")
     .replace(/\s{2,}/g, " ")
     .replace(/['<>:]/g, "");
@@ -1282,7 +1284,7 @@ let simplifiedName = (name = "") => {
   let splitName = name.includes("-") ? name.split("-")[0] : name;
   splitName = splitName.trim();
   name = splitName.split(" ").length > 1 ? splitName : name;
-  // name = name.includes(":") ? name.split(":")[0] : name;
+  name = name.includes(":") ? name.split(":")[0] : name;
   name = name.trim();
   return cleanName(name);
 };
